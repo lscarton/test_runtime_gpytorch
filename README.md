@@ -3,7 +3,7 @@
 Simple script to test the runtime of GPyTorch on CPU and GPU on my PC.
 
 - It uses a `MultitaskGPModel` trained.
-- It trains for `2000` epochs.
+- It trains for `4000` epochs.
 - The input dim is `12`.
 - The number of tasks is `6`.
 - The number of predicted points is `10`.
