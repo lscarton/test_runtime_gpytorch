@@ -111,10 +111,10 @@ def main():
             total_gpu_train_time += gpu_train_time
         cpu_train_time = train_on_(train_x, train_y, EPOCHS, 'cpu')
         total_cpu_train_time += cpu_train_time
-        gpu_prediction_time = make_predictions_on_gpu(train_x, train_y, 'cuda')
+        gpu_prediction_time = make_predictions_on_(train_x, train_y, 'cuda')
         if gpu_prediction_time is not None:
             total_gpu_prediction_time += gpu_prediction_time
-        cpu_prediction_time = make_predictions_on_cpu(train_x, train_y, 'cpu')
+        cpu_prediction_time = make_predictions_on_(train_x, train_y, 'cpu')
         total_cpu_prediction_time += cpu_prediction_time
 
     # Calculate the average times
