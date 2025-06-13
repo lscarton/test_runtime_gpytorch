@@ -1,0 +1,10 @@
+[project]
+name = "test_runtime_gpytorch"
+version = "0.1.0"
+description = "Test to evaluate the runtime of a GP on the GPU and on the CPU."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "gpytorch>=1.14",
+    "loguru>=0.7.3",
+]
