@@ -25,8 +25,8 @@ def toy_function(x):
 
 # Define the MultitaskGPModel
 class MultitaskGPModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y):
-        super(MultitaskGPModel, self).__init__(train_x, train_y, gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=6))
+    def __init__(self, train_x, train_y, likelihood):
+        super(MultitaskGPModel, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.MultitaskMean(
             gpytorch.means.ConstantMean(), num_tasks=6
         )
@@ -48,8 +48,8 @@ def train_on_(train_x, train_y, epochs, device):
         start_time = time.time()
         train_x = train_x.to(device)
         train_y = train_y.to(device)
-        model = MultitaskGPModel(train_x.to(device), train_y.to(device)).to(device)
-        likelihood = model.likelihood.to(device)
+        likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=6).to(device)
+        model = MultitaskGPModel(train_x.to(device), train_y.to(device), likelihood).to(device)
         model.train()
         likelihood.train()
         optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
@@ -73,8 +73,8 @@ def make_predictions_on_(train_x, train_y, device):
     start_time = time.time()
     train_x = train_x.to(device)
     train_y = train_y.to(device)
-    model = MultitaskGPModel(train_x, train_y).to(device)
-    likelihood = model.likelihood.to(device)
+    likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=6).to(device)
+    model = MultitaskGPModel(train_x.to(device), train_y.to(device), likelihood).to(device)
 
     model.eval()
     likelihood.eval()
