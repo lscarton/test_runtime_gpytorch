@@ -40,43 +40,28 @@ class MultitaskGPModel(gpytorch.models.ExactGP):
         return gpytorch.distributions.MultitaskMultivariateNormal(mean_x, covar_x)
 
 # Train the model on CPU
-def train_on_cpu(train_x, train_y, epochs):
-    start_time = time.time()
-    model = MultitaskGPModel(train_x, train_y)
-    likelihood = model.likelihood
-    model.train()
-    likelihood.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
-    mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
-    for i in range(epochs):
-        optimizer.zero_grad()
-        output = model(train_x)
-        loss = -mll(output, train_y)
-        loss.backward()
-        optimizer.step()
-        if i % 100 == 0:
-            logger.debug(f"CPU Epoch {i+1}, Loss: {loss.item():.4f}")
-    end_time = time.time()
-    return end_time - start_time
+
 
 # Train the model on GPU
-def train_on_gpu(train_x, train_y, epochs):
+def train_on_(train_x, train_y, epochs, device):
     if torch.cuda.is_available():
         start_time = time.time()
-        model = MultitaskGPModel(train_x.cuda(), train_y.cuda())
-        likelihood = model.likelihood
+        train_x = train_x.to(device)
+        train_y = train_y.to(device)
+        model = MultitaskGPModel(train_x.to(device), train_y.to(device)).to(device)
+        likelihood = model.likelihood.to(device)
         model.train()
         likelihood.train()
         optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
-        mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood.cuda(), model.cuda())
+        mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
         for i in range(epochs):
             optimizer.zero_grad()
-            output = model(train_x.cuda())
-            loss = -mll(output, train_y.cuda())
+            output = model(train_x)
+            loss = -mll(output, train_y)
             loss.backward()
             optimizer.step()
             if i % 100 == 0:
-                logger.debug(f"GPU Epoch {i+1}, Loss: {loss.item():.4f}")
+                logger.debug(f"{device} Epoch {i+1}, Loss: {loss.item():.4f}")
         end_time = time.time()
         return end_time - start_time
     else:
@@ -84,10 +69,13 @@ def train_on_gpu(train_x, train_y, epochs):
         return None
 
 # Make predictions on CPU
-def make_predictions_on_cpu(train_x, train_y):
+def make_predictions_on_(train_x, train_y, device):
     start_time = time.time()
-    model = MultitaskGPModel(train_x, train_y)
-    likelihood = model.likelihood
+    train_x = train_x.to(device)
+    train_y = train_y.to(device)
+    model = MultitaskGPModel(train_x, train_y).to(device)
+    likelihood = model.likelihood.to(device)
+
     model.eval()
     likelihood.eval()
     test_x = torch.randn(N_PREDICTION, 12)
@@ -95,29 +83,10 @@ def make_predictions_on_cpu(train_x, train_y):
         predictions = likelihood(model(test_x))
         mean = predictions.mean
         lower, upper = predictions.confidence_region()
-    logger.info("CPU predicted")
+    logger.info(f"{device} predicted")
     end_time = time.time()
     return end_time - start_time
 
-# Make predictions on GPU
-def make_predictions_on_gpu(train_x, train_y):
-    if torch.cuda.is_available():
-        start_time = time.time()
-        model = MultitaskGPModel(train_x.cuda(), train_y.cuda()).cuda()
-        likelihood = model.likelihood.cuda()
-        model.eval()
-        likelihood.eval()
-        test_x = torch.randn(N_PREDICTION, 12).cuda()
-        with torch.no_grad():
-            predictions = likelihood(model(test_x))
-            mean = predictions.mean
-            lower, upper = predictions.confidence_region()
-        logger.info("GPU predicted")
-        end_time = time.time()
-        return end_time - start_time
-    else:
-        logger.warn("GPU not available, skipping GPU predictions")
-        return None
 
 def main():
     # Generate the dataset
@@ -137,15 +106,15 @@ def main():
     # Call each function N times
     for i in range(n_iterations):
         logger.info(f"Iteration {i+1}")
-        gpu_train_time = train_on_gpu(train_x, train_y, EPOCHS)
+        gpu_train_time = train_on_(train_x, train_y, EPOCHS, 'cuda')
         if gpu_train_time is not None:
             total_gpu_train_time += gpu_train_time
-        cpu_train_time = train_on_cpu(train_x, train_y, EPOCHS)
+        cpu_train_time = train_on_(train_x, train_y, EPOCHS, 'cpu')
         total_cpu_train_time += cpu_train_time
-        gpu_prediction_time = make_predictions_on_gpu(train_x, train_y)
+        gpu_prediction_time = make_predictions_on_gpu(train_x, train_y, 'cuda')
         if gpu_prediction_time is not None:
             total_gpu_prediction_time += gpu_prediction_time
-        cpu_prediction_time = make_predictions_on_cpu(train_x, train_y)
+        cpu_prediction_time = make_predictions_on_cpu(train_x, train_y, 'cpu')
         total_cpu_prediction_time += cpu_prediction_time
 
     # Calculate the average times
